@@ -4,7 +4,11 @@
 
 export const environment = {
     production: false,
-    api_url: 'http://localhost:3600/api'
+    api_url: 'http://localhost:3600/api',
+    file_api_url: 'http://localhost:3600/api/Fileservice',
+    SecretKey: "TTRAINING001224GGWTT",  //it should be 32 char long, use only for client side encrypt/decrypt, do not NEVER use the SAME key in server side. 
+    SecretSalt: "VITRAINING001222987",  //it should be 16 char long, use only for client side encrypt/decrypt, do not NEVER use the SAME key in server side.
+    localstorage_prefix : "training2023",
 };
 
 /*

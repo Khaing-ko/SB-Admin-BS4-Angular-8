@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { UserService } from '../core/service/user.service';
 import { routerTransition } from '../router.animations';
+
 
 @Component({
     selector: 'app-login',
@@ -9,11 +12,51 @@ import { routerTransition } from '../router.animations';
     animations: [routerTransition()]
 })
 export class LoginComponent implements OnInit {
-    constructor(public router: Router) {}
+    loginData = new FormGroup({
+        UserName: new FormControl('', [ Validators.required, Validators.minLength(5) ]),
+        Password: new FormControl('', [ Validators.required, Validators.minLength(5) ]),
+      });
+    loginError: string;
+    loginFail = false;
 
-    ngOnInit() {}
+    constructor(
+        public router: Router,
+        private userService: UserService,
+    ) {}
+
+    ngOnInit() {
+        
+    }
 
     onLoggedin() {
-        localStorage.setItem('isLoggedin', 'true');
-    }
+        //localStorage.setItem('isLoggedin', 'true');
+        //this.router.navigateByUrl('/');
+        console.log(this.loginData.value);
+
+        this.userService
+            .attemptAuth(this.loginData.value).subscribe({
+                next: (data) => {
+                    if(data === undefined) {
+                        this.loginFail = true;
+                        this.router.navigate(['/login']);
+                        this.loginError = "Login failed.";    
+                    }
+                    else {
+                        console.log('Login success');
+                        console.log(data);
+                        localStorage.setItem('isLoggedin', 'true');
+                        this.router.navigateByUrl('/');
+                    }
+                    
+                },
+                error: (err) => {
+                    console.log('Login fail');
+                    this.loginFail = true;
+                    this.router.navigate(['/login']);
+                    this.loginError = err;
+                }
+            });
+            
+    } 
+    
 }

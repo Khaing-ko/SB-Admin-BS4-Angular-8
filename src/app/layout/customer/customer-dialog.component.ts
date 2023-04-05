@@ -3,9 +3,10 @@ import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { IntlService } from '@progress/kendo-angular-intl';
 import { CustomerService } from '../../core/service/customer.service';
 import { Customer } from '../../core/model/customer';
-import { ThemeService } from 'ng2-charts';
 import { CustomerType } from '../../core/model/customer-type';
 import { CustomertypeService } from '../../core/service/customertype.service';
+import { Globalfunction } from '../../core/global/globalfunction';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-customer-dialog',
@@ -13,21 +14,27 @@ import { CustomertypeService } from '../../core/service/customertype.service';
   styleUrls: ['./customer-dialog.component.scss']
 })
 export class CustomerDialogComponent {
-  public saveUrl = 'http://localhost:3600/api/FileService/Upload/Temp';
-  public removeUrl = 'http://localhost:3600/api/FileService/Upload/TempRemove';
-  public uploadComplete = false;
-  public fileName: string = '';
+
   uploadedFileNames: string[] = [];
   public customertypes: CustomerType[];
   customerformGroup: FormGroup;
   active = false;
   @Input() public isNew = false;
+  public globalfunction: Globalfunction = new Globalfunction();
+
+  saveUrl: string = '';
+  removeUrl: string = '';
+  tempimage: string = '';
+  photoToRemove: string = null;
+  previewimage: {};
+  tempdir: string = '-';
 
   @Input() public set model(customerobj: Customer) {
 
     if (customerobj !== undefined) {
       if (customerobj.CustomerId == undefined)  //New, can't use isNew flag because of delay of Input. 
       {
+        this.previewimage = {};
         this.customerformGroup = new FormGroup({
           CustomerName: new FormControl('', [Validators.required, Validators.minLength(5), Validators.maxLength(20)]),
           RegisterDate: new FormControl(new Date()),
@@ -37,13 +44,17 @@ export class CustomerDialogComponent {
         });
       }
       else {  //Edit
+        this.customerservice.getImagePath(customerobj.CustomerId)
+          .subscribe(resimage => {
+            this.previewimage = resimage;
+          });
         this.customerformGroup = new FormGroup({
           CustomerId: new FormControl(customerobj.CustomerId),
           CustomerName: new FormControl(customerobj.CustomerName, [Validators.required, Validators.minLength(5), Validators.maxLength(20)]),
           RegisterDate: new FormControl(this.intl.parseDate(this.intl.formatDate(customerobj.RegisterDate, 'yyyy-MM-dd'))),
           CustomerAddress: new FormControl(customerobj.CustomerAddress),
           CustomerTypeId: new FormControl(customerobj.CustomerTypeId),
-          CustomerPhoto: new FormControl(customerobj.CustomerPhoto)
+          CustomerPhoto: new FormControl('')
         });
       }
     }
@@ -60,6 +71,8 @@ export class CustomerDialogComponent {
   ) { }
 
   ngOnInit(): void {
+    this.saveUrl = `${environment.file_api_url}` + '/Upload/TempDir';
+    this.removeUrl = `${environment.file_api_url}` + '/Upload/TempRemoveDir';
     this.customertypeService.getCustomerTypes().subscribe(res => this.customertypes = res);
   }
 
@@ -68,8 +81,13 @@ export class CustomerDialogComponent {
     e.preventDefault();
     var regDate = new Date(this.customerformGroup.value.RegisterDate.getTime() - (this.customerformGroup.value.RegisterDate.getTimezoneOffset() * 60000));  // localtimemilisecond - (utcoffsetminute * 60 * 1000)
     this.customerformGroup.patchValue({ RegisterDate: regDate });
+
+    if (this.customerformGroup.value.CustomerPhoto != null && this.customerformGroup.value.CustomerPhoto != "")
+      this.customerformGroup.patchValue({ CustomerPhoto: this.tempdir });
+
     this.save.emit(this.customerformGroup.getRawValue());
     this.active = false;
+    this.tempdir = '-';
   }
 
   public onCancel(e): void {
@@ -89,29 +107,42 @@ export class CustomerDialogComponent {
 
 
   public onRemove(e): void {
-    console.log('File removed:', e);
+    e.data = {
+      tempdir: this.tempdir,
+      tempfile: e.files[0].myUid
+    };
   }
 
   public onSuccess(e): void {
-    console.log('File uploaded:', e);
-    this.uploadComplete = true;
-    this.fileName = e.files[0].name;
+    if (e.operation == 'upload') {
+      this.tempdir = e.response.body.TempDir;
+      e.files[0].myUid = e.response.body.TempFile;  //store encrypted temp file name
+    }
+    console.log("tempdir : " + this.tempdir);
   }
 
   public onUpload(e): void {
-    console.log('File upload initiated:', e);
+    e.data = {
+      tempdir: this.tempdir,
+      enFile: this.globalfunction.encryptData(e.files[0].name)
+    }
   }
 
-  public moveFile(): void {
-    console.log('Moving file:', this.fileName);
-    // make a request to move the file to the specified location
+  public deleteImageHandler(e,filename) {
+    this.photoToRemove = filename;
+    e.preventDefault();
   }
-  onFileUpload(e: any) {
-    if (e.files && e.files.length > 0) {
-      this.fileName = e.files[0].name;
-      console.log('Uploaded file name:', this.fileName);
-      this.customerformGroup.get('CustomerPhoto').setValue(this.fileName);
 
+  public confirmPhotoRemove(shouldRemove: boolean): void {
+
+    if (shouldRemove) {
+        this.customerservice.deleteCustomerPhoto(this.customerformGroup.value.CustomerId, this.photoToRemove).subscribe(deletestatus => {
+        delete this.previewimage[this.photoToRemove];
+        this.photoToRemove = null;
+      });
+    }
+    else {
+      this.photoToRemove = null;
     }
   }
 }

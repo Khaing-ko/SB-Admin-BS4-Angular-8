@@ -25,7 +25,7 @@ export class CustomerService extends BehaviorSubject<GridDataResult>{
       super.next(x);
       this.gridLoading = false;
     });
-  }
+  }  
 
   getCustomerReport(girdState: DataSourceRequestState, filterSet: any) {
     this.gridLoading = true;
@@ -39,6 +39,11 @@ export class CustomerService extends BehaviorSubject<GridDataResult>{
   getCustomer(id: number): Observable<Customer> {
     this.messageService.add(`CustomerService: fetched Customer id=${id}`);
     return this.apiservice.get(`/Customers/${id}`);
+  }
+
+  getImagePath(id: number): Observable<string> {
+    const encryptdata = btoa(id.toString());
+    return this.apiservice.get('/FileService/DownloadDir/CustomerPhoto/'+ encryptdata)
   }
 
   /** POST: add a new Customer to the server */
@@ -57,6 +62,12 @@ export class CustomerService extends BehaviorSubject<GridDataResult>{
   deleteCustomer(id: number): Observable<Customer> {
     this.messageService.add(`CustomerService: delete Customer id=${id}`);
     return this.apiservice.delete('/Customers/' + id);
+  }
+
+  deleteCustomerPhoto(id: number, filename: string): Observable<string> {
+    const encryptdata = btoa(id.toString());  //convert to base64
+    this.messageService.add(`CustomerService: delete Customer Photo =${id} ${filename}`);
+    return this.apiservice.postJson('/Fileservice/RemoveDir/CustomerPhoto/' + encryptdata, filename);
   }
 
 

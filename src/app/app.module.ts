@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { NgModule } from '@angular/core';
 
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
@@ -11,6 +11,8 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { AuthGuard } from './shared';
 import { LanguageTranslationModule } from './shared/modules/language-translation/language-translation.module';
+import { HttpTokenInterceptor } from './core/interceptors/http.token.interceptor';
+
 
 
 
@@ -24,9 +26,10 @@ import { LanguageTranslationModule } from './shared/modules/language-translation
         LanguageTranslationModule,
         AppRoutingModule,
         NgbModule,
+        
     ],
     declarations: [AppComponent],
-    providers: [AuthGuard],
+    providers: [{ provide: HTTP_INTERCEPTORS, useClass: HttpTokenInterceptor, multi: true },AuthGuard],
     bootstrap: [AppComponent]
 })
 export class AppModule {}
